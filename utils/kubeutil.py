@@ -27,7 +27,16 @@ def is_k8s():
     return 'KUBERNETES_PORT' in os.environ
 
 
-class KubeUtil():
+def get_procfs_netroute():
+    """
+    Compute the path to the netroute file-like object using the `procfs_path` param
+    from the config file.
+    """
+    from config import get_config
+    return os.path.join(get_config(parse_args=True).get('procfs_path', '/proc'), 'net', 'route')
+
+
+class KubeUtil:
     __metaclass__ = Singleton
 
     DEFAULT_METHOD = 'http'
@@ -39,7 +48,6 @@ class KubeUtil():
     DEFAULT_MASTER_NAME = 'kubernetes'  # DNS name to reach the master from a pod.
     CA_CRT_PATH = '/run/secrets/kubernetes.io/serviceaccount/ca.crt'
     AUTH_TOKEN_PATH = '/run/secrets/kubernetes.io/serviceaccount/token'
-    NET_ROUTE_PATH = '/proc/net/route'
 
     POD_NAME_LABEL = "io.kubernetes.pod.name"
     NAMESPACE_LABEL = "io.kubernetes.pod.namespace"
@@ -197,16 +205,15 @@ class KubeUtil():
         """
         Return the IP address of the default router for the pod.
         """
+        procfs_netroute = get_procfs_netroute()
         try:
-            from config import get_config
-            procfs_netroute = os.path.join(get_config(parse_args=True).get('procfs_path','/proc'), 'net', 'route')
             with open(procfs_netroute) as f:
                 for line in f.readlines():
                     fields = line.strip().split()
                     if fields[1] == '00000000':
                         return socket.inet_ntoa(struct.pack('<L', int(fields[2], 16)))
         except IOError, e:
-            log.error('Unable to open /proc/net/route: %s', e)
+            log.error('Unable to open %s: %s', procfs_netroute, e)
 
         return None
 
