@@ -21,6 +21,8 @@ cache:
   - C:\projects\dd-agent\.cache
   - C:\projects\dd-agent\vendor\cache
   - C:\projects\dd-agent\embedded
+services:
+  - iis
 install:
   - gem install bundler --quiet --no-ri --no-rdoc
   - bundle install
